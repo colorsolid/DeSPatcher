@@ -1,1 +1,1 @@
-pyinstaller -w --add-data "m02.patch;." --add-data "m03.patch;." --add-data "m04.patch;." --add-data "m05.patch;." --add-data "m06.patch;." --add-data "icon.ico;." --icon=icon.ico DeSPatcher.py
+pyinstaller --add-data "icon.ico;." --icon=icon.ico DeSPatcher.py
