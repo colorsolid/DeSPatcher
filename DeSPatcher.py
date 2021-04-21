@@ -8,10 +8,7 @@ import tkinter as tk
 from diff_match_patch import diff_match_patch
 from shutil import copyfile, move
 
-try:
-    BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-except NameError:
-    BASE_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+BASE_DIR = os.path.dirname(sys.argv[0])
 
 FILE_NUMS = [1, 2, 3, 4, 5, 6, 8]
 
@@ -26,6 +23,9 @@ if 'script-dir' not in DATA:
     DATA['script-dir'] = ''
 SCRIPT_DIR = DATA['script-dir']
 
+# hashes for unmodified game files
+# 0 - .sdat
+# 1 - .dcx
 DEFAULT_HASHES = [
     [
         '753b3e80024c71336f01e1cae7f28cc1f527668cb9b9d1186eac35e9fe59c78c',
