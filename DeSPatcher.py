@@ -52,7 +52,7 @@ DEFAULT_HASHES = [
         '9fa313e61cea55a45a73fc128702e64a66e5d4be74a62a5d3a5bc09d0e0af713'
     ],
     [
-        '3266881bf0fbe5a990ce0e1adf13f8dd22714d087aa5fa59f2e0830549f022ac'
+        '3266881bf0fbe5a990ce0e1adf13f8dd22714d087aa5fa59f2e0830549f022ac',
         '120fead9a61067c7acbdc6dde154dff990136a14fe7f8a5cca2b1bfbeb9bb4dd'
     ]
 ]
