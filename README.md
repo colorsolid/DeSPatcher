@@ -1,6 +1,6 @@
-# DeSPatcher / Warp between archstones
+# DeSPatcher
 
-Patcher for Demon's Souls that allows warping between archstones within a map.
+Patcher for my Demon's Souls mods.
 
 ## Usage
 
