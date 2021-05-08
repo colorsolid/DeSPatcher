@@ -30,6 +30,12 @@ DMP = diff_match_patch()
 log_text = ''
 
 
+def log_and_print(text):
+    global log_text
+    print(text)
+    log_text += text + '\n'
+
+
 def get_mods():
     mod_dir = os.path.join(BASE_DIR, 'mods')
     mods = []
@@ -101,27 +107,23 @@ def get_hash(filepath):
     return sha.hexdigest()
 
 
-def check_patchable(file_path, hash_iterable, mod_hash, patch_path):
+def check_patchable(file_path, hash_list, mod_hash, patch_path):
     global log_text
     _, file_name = os.path.split(file_path)
     if not os.path.isfile(file_path):
-        log_text += f'{file_name} not found, skipping\n'
-        print(f'{file_name} not found, skipping')
+        log_and_print(f'{file_name} not found, skipping')
         return False
     else:
         hash = get_hash(file_path)
-        if hash not in hash_iterable:  # file is not in its expected default state
+        if hash not in hash_list:  # file is not in its expected default state
             if hash == mod_hash:
-                log_text += f'{file_name} already patched, skipping file\n'
-                print(f'{file_name} already patched, skipping file')
+                log_and_print(f'{file_name} already patched, skipping file')
             else:
-                log_text += f'{file_name} is not in it\'s default state, please remove patches first\n'
-                print(f'{file_name} is not in it\'s default state, please remove patches first')
+                log_and_print(f'{file_name} is not in it\'s default state, please remove patches first')
             return False
     if not os.path.isfile(patch_path):
         _, patch_name = os.path.split(patch_path)
-        log_text += f'{patch_name} not found, skipping file\n'
-        print(f'{patch_name} not found, skipping file')
+        log_and_print(f'{patch_name} not found, skipping file')
         return False
     return True
 
@@ -134,8 +136,7 @@ def patch_file(original_path, patch_path, *_):
     with open(original_path, 'rb') as f:
         unmodded_data = f.read().hex()
     if os.path.isfile(original_bak_path):
-        log_text += f'{original_bak_name} already exists, not overwriting\n'
-        print(f'{original_bak_name} already exists, not overwriting')
+        log_and_print(f'{original_bak_name} already exists, not overwriting')
     else:
         copyfile(original_path, original_bak_path)
     with open(patch_path, 'r') as f:
@@ -144,8 +145,7 @@ def patch_file(original_path, patch_path, *_):
     modded_data, _ = DMP.patch_apply(patches, unmodded_data)
     with open(original_path, 'wb') as f:
         f.write(bytes.fromhex(modded_data))
-        print('applying patch')
-        log_text += f'Applying patch to {original_name}\n'
+        log_and_print(f'Applying patch to {original_name}')
 
 
 def save_data():
@@ -156,15 +156,6 @@ def save_data():
 # -------------------------------------------------------------
 # ----------------------- W I D G E T S -----------------------
 # -------------------------------------------------------------
-
-def config_grids(widget, rows=None, columns=None):
-    if rows is None:
-        rows = [1]
-    if columns is None:
-        columns = [1]
-    [widget.rowconfigure(i, weight=w) for i, w in enumerate(rows)]
-    [widget.columnconfigure(i, weight=w) for i, w in enumerate(columns)]
-
 
 def get_geometry(settings):
     if all([(key in settings['window']) for key in ['x', 'y']]):
@@ -180,6 +171,26 @@ def get_geometry(settings):
     return geometry
 
 
+def config_grids(widget, rows=None, columns=None):
+    if rows is None:
+        rows = [1]
+    if columns is None:
+        columns = [1]
+    [widget.rowconfigure(i, weight=w) for i, w in enumerate(rows)]
+    [widget.columnconfigure(i, weight=w) for i, w in enumerate(columns)]
+
+
+def update_button(widget, text, state='normal'):
+    widget.config(text=f'{widget.default_text} {text}', state=state)
+
+
+def update_text(widget, text):
+    widget.config(state='normal')
+    widget.delete('1.0', 'end')
+    widget.insert('end', text)
+    widget.config(state='disabled')
+
+
 def close_window(root):
     w = root.winfo_width()
     h = root.winfo_height()
@@ -193,10 +204,6 @@ def close_window(root):
     }
     save_data()
     root.destroy()
-
-
-def update_button(widget, text, state='normal'):
-    widget.config(text=f'{widget.default_text} {text}', state=state)
 
 
 class Menubar(tk.Menu):
@@ -235,7 +242,7 @@ class MainWindow(tk.Frame):
         super().__init__(master, *args, **kwargs)
         self.master = master
 
-        font = {'font': 'Consolas 11'}
+        font = {'font': 'Calibri 11'}
 
         self.config(bg='gray20')
 
@@ -263,13 +270,13 @@ class MainWindow(tk.Frame):
 
         config_grids(self.mod_frame, rows=[0, 1])
 
-        self.log_var = tk.StringVar()
-        self.log_var.set('Browse to the game\'s script directory (PS3_GAME/USRDIR/script),\nand then apply patches')
-
         self.log_frame = tk.Frame(self, bg='gray30')
         self.log_frame.grid(row=1, column=0, columnspan=2, sticky='nsew')
 
         config_grids(self.log_frame)
+
+        self.log_var = tk.StringVar()
+        self.log_var.set('Browse to the game\'s script directory (PS3_GAME/USRDIR/script),\nand then apply patches')
 
         self.log_label = tk.Label(
             self.log_frame, bg='gray30', fg='gray90', textvariable=self.log_var,
@@ -333,19 +340,24 @@ class MainWindow(tk.Frame):
     def set_mod(self, mod_name):
         mod = next((m for m in self.mods if m['patch-name'] == mod_name), None)
         self.mod = mod
+
+        name = ''
+        if 'name' in self.mod:
+            name = self.mod['name']
         self.selected_mod_label.config(state='normal')
-        self.selected_mod_label.delete('1.0', 'end')
-        label = self.mod['name']
-        self.selected_mod_label.insert('end', f'Current mod: {label}')
-        self.selected_mod_label.config(state='disabled')
+        update_text(self.selected_mod_label, f'Current mod: {name}')
+
         description = ''
         if 'description' in self.mod:
             description = self.mod['description']
-        self.description_label.config(state='normal')
-        self.description_label.delete('1.0', 'end')
-        self.description_label.insert('end', description)
-        self.description_label.config(state='disabled')
+        update_text(self.description_label, description)
+
         self.check_dir()
+
+    def browse_directory(self):
+        directory = tk.filedialog.askdirectory(initialdir=BASE_DIR)
+        if os.path.isdir(directory):
+            self.dir_var.set(directory)
 
     def apply_patches(self):
         global log_text
@@ -448,11 +460,6 @@ class MainWindow(tk.Frame):
             update_button(self.remove_patches_button, '(backup files not found)', 'disabled')
 
         return successful
-
-    def browse_directory(self):
-        directory = tk.filedialog.askdirectory(initialdir=BASE_DIR)
-        if os.path.isdir(directory):
-            self.dir_var.set(directory)
 
     def quit(self):
         close_window(self.master)
