@@ -10,9 +10,6 @@ from shutil import copyfile, move
 
 BASE_DIR = os.path.dirname(sys.argv[0])
 
-# remove reliance
-FILE_NUMS = [1, 2, 3, 4, 5, 6, 8]
-
 DATA_PATH = os.path.join(BASE_DIR, 'data.json')
 if os.path.isfile(DATA_PATH):
     with open('data.json', 'r') as f:
@@ -33,34 +30,23 @@ DMP = diff_match_patch()
 log_text = ''
 
 
-def get_hash(filepath):
-    sha = hashlib.sha256()
-    with open(filepath, 'rb') as f:
-        while True:
-            data = f.read(sha.block_size)
-            if not data:
-                break
-            sha.update(data)
-    return sha.hexdigest()
-
-
-def create_patch(original, modified, mod_dir=None, patch_name=None):
-    with open(original, 'rb') as f:
-        unmodded_data = f.read().hex()
-    with open(modified, 'rb') as f:
-        modded_data = f.read().hex()
-    path, name = os.path.split(modified)
-    if mod_dir is None:
-        mod_dir = path
-    patches = DMP.patch_make(unmodded_data, modded_data)
-    diff = DMP.patch_toText(patches)
-    if patch_name is None:
-        patch_name = os.path.split(name)[1].split('.')[0] + '.patch'
+def get_mods():
+    mod_dir = os.path.join(BASE_DIR, 'mods')
+    mods = []
     if not os.path.isdir(mod_dir):
         os.mkdir(mod_dir)
-    patch_path = os.path.join(mod_dir, patch_name)
-    with open(patch_path, 'w+') as f:
-        f.write(diff)
+        return mods
+    subdir_names = [f for f in os.listdir(mod_dir) if os.path.isdir(os.path.join(mod_dir, f))]
+    for subdir_name in subdir_names:
+        subdir = os.path.join(mod_dir, subdir_name)
+        data_file = os.path.join(subdir, 'data.json')
+        if not os.path.isfile(data_file):
+            continue
+        with open(data_file, 'r') as f:
+            mod = json.load(f)
+            mod['patch-name'] = subdir_name
+            mods.append(mod)
+    return mods
 
 
 def gen_patches():
@@ -85,23 +71,34 @@ def gen_patches():
         json.dump(data, f, indent=2)
 
 
-def get_mods():
-    mod_dir = os.path.join(BASE_DIR, 'mods')
-    mods = []
+def create_patch(original, modified, mod_dir=None, patch_name=None):
+    with open(original, 'rb') as f:
+        unmodded_data = f.read().hex()
+    with open(modified, 'rb') as f:
+        modded_data = f.read().hex()
+    path, name = os.path.split(modified)
+    if mod_dir is None:
+        mod_dir = path
+    patches = DMP.patch_make(unmodded_data, modded_data)
+    diff = DMP.patch_toText(patches)
+    if patch_name is None:
+        patch_name = os.path.split(name)[1].split('.')[0] + '.patch'
     if not os.path.isdir(mod_dir):
         os.mkdir(mod_dir)
-        return mods
-    subdir_names = [f for f in os.listdir(mod_dir) if os.path.isdir(os.path.join(mod_dir, f))]
-    for subdir_name in subdir_names:
-        subdir = os.path.join(mod_dir, subdir_name)
-        data_file = os.path.join(subdir, 'data.json')
-        if not os.path.isfile(data_file):
-            continue
-        with open(data_file, 'r') as f:
-            mod = json.load(f)
-            mod['patch-name'] = subdir_name
-            mods.append(mod)
-    return mods
+    patch_path = os.path.join(mod_dir, patch_name)
+    with open(patch_path, 'w+') as f:
+        f.write(diff)
+
+
+def get_hash(filepath):
+    sha = hashlib.sha256()
+    with open(filepath, 'rb') as f:
+        while True:
+            data = f.read(sha.block_size)
+            if not data:
+                break
+            sha.update(data)
+    return sha.hexdigest()
 
 
 def check_patchable(file_path, hash_iterable, mod_hash, patch_path):
@@ -151,6 +148,15 @@ def patch_file(original_path, patch_path, *_):
         log_text += f'Applying patch to {original_name}\n'
 
 
+def save_data():
+    with open('data.json', 'w+') as f:
+        json.dump(DATA, f, indent=4)
+
+
+# -------------------------------------------------------------
+# ----------------------- W I D G E T S -----------------------
+# -------------------------------------------------------------
+
 def config_grids(widget, rows=None, columns=None):
     if rows is None:
         rows = [1]
@@ -158,11 +164,6 @@ def config_grids(widget, rows=None, columns=None):
         columns = [1]
     [widget.rowconfigure(i, weight=w) for i, w in enumerate(rows)]
     [widget.columnconfigure(i, weight=w) for i, w in enumerate(columns)]
-
-
-def save_data():
-    with open('data.json', 'w+') as f:
-        json.dump(DATA, f, indent=4)
 
 
 def get_geometry(settings):
@@ -194,27 +195,8 @@ def close_window(root):
     root.destroy()
 
 
-def set_mod(mod_name, window):
-    mod = next((m for m in window.mods if m['patch-name'] == mod_name), None)
-    window.selected_mod = mod
-    window.selected_mod_label.config(state='normal')
-    window.selected_mod_label.delete('1.0', 'end')
-    label = window.selected_mod['name']
-    window.selected_mod_label.insert('end', f'Current mod: {label}')
-    window.selected_mod_label.config(state='disabled')
-    description = ''
-    if 'description' in window.selected_mod:
-        description = window.selected_mod['description']
-    window.description_label.config(state='normal')
-    window.description_label.delete('1.0', 'end')
-    window.description_label.insert('end', description)
-    window.description_label.config(state='disabled')
-    window.check_dir()
-
-
-# -------------------------------------------------------------
-# ----------------------- W I D G E T S -----------------------
-# -------------------------------------------------------------
+def update_button(widget, text, state='normal'):
+    widget.config(text=f'{widget.default_text} {text}', state=state)
 
 
 class Menubar(tk.Menu):
@@ -239,13 +221,13 @@ class Menubar(tk.Menu):
 
     def populate_mods_menu(self):
         self.master.mods = get_mods()
-        set_mod(self.master.mods[0]['patch-name'], self.master)
+        self.master.set_mod(self.master.mods[0]['patch-name'])
         self.mods_menu.delete(3, 'end')
         if not self.master.mods:
             self.mods_menu.add_command(label='No mods found', command=lambda: None, state='disabled')
         for mod in self.master.mods:
             label = mod['patch-name']
-            self.mods_menu.add_command(label=label, command=lambda label=label: set_mod(label, self.master))
+            self.mods_menu.add_command(label=label, command=lambda label=label: self.master.set_mod(label))
 
 
 class MainWindow(tk.Frame):
@@ -317,22 +299,24 @@ class MainWindow(tk.Frame):
         self.dir_browse_button.grid(row=2, column=1, **button_grid)
 
         self.apply_patches_button = tk.Button(
-            self, text='Apply patches', command=self.apply_patches,
+            self, text='', command=self.apply_patches,
             **button_style
         )
+        self.apply_patches_button.default_text = 'Apply patches'
         self.apply_patches_button.grid(
             row=3, column=0, columnspan=2, **button_grid
         )
 
         self.remove_patches_button = tk.Button(
-            self, text='Remove patches', command=self.remove_patches,
+            self, text='', command=self.remove_patches,
             **button_style
         )
+        self.remove_patches_button.default_text = 'Remove patches'
         self.remove_patches_button.grid(
             row=4, column=0, columnspan=2, **button_grid
         )
 
-        self.selected_mod = None
+        self.mod = None
 
         self.mod_creation_window = None
 
@@ -346,6 +330,23 @@ class MainWindow(tk.Frame):
         else:
             self.master.geometry(get_geometry(DATA))
 
+    def set_mod(self, mod_name):
+        mod = next((m for m in self.mods if m['patch-name'] == mod_name), None)
+        self.mod = mod
+        self.selected_mod_label.config(state='normal')
+        self.selected_mod_label.delete('1.0', 'end')
+        label = self.mod['name']
+        self.selected_mod_label.insert('end', f'Current mod: {label}')
+        self.selected_mod_label.config(state='disabled')
+        description = ''
+        if 'description' in self.mod:
+            description = self.mod['description']
+        self.description_label.config(state='normal')
+        self.description_label.delete('1.0', 'end')
+        self.description_label.insert('end', description)
+        self.description_label.config(state='disabled')
+        self.check_dir()
+
     def apply_patches(self):
         global log_text
         log_text = ''
@@ -354,19 +355,17 @@ class MainWindow(tk.Frame):
             print('Error')
             return '\nERROR\n'
 
-        for path_name in self.selected_mod['files']:
+        for path_name in self.mod['files']:
             root_dir = DATA['root-dir']
-            patch_dir = os.path.join(BASE_DIR, 'mods', self.selected_mod['patch-name'])
+            patch_dir = os.path.join(BASE_DIR, 'mods', self.mod['patch-name'])
             file_dir = os.path.join(root_dir, path_name)
-            patches = self.selected_mod['files'][path_name]
+            patches = self.mod['files'][path_name]
             for file_name in patches:
                 file_path = os.path.join(file_dir, file_name)
                 default_hash, modded_hash = patches[file_name]
                 patch_path = os.path.join(patch_dir, f'{path_name}---{file_name}.patch')
 
-                patchable = check_patchable(
-                    file_path, default_hash, modded_hash, patch_path
-                )
+                patchable = check_patchable(file_path, default_hash, modded_hash, patch_path)
                 if patchable is False:
                     continue
 
@@ -387,10 +386,10 @@ class MainWindow(tk.Frame):
 
         self.log_var.set(log_text)
 
-        for path_name in self.selected_mod['files']:
+        for path_name in self.mod['files']:
             root_dir = DATA['root-dir']
             file_dir = os.path.join(root_dir, path_name)
-            patches = self.selected_mod['files'][path_name]
+            patches = self.mod['files'][path_name]
             for file_name in patches:
                 file_path = os.path.join(file_dir, file_name)
                 bak_name = file_name + '.bak'
@@ -408,49 +407,45 @@ class MainWindow(tk.Frame):
 
         self.check_dir()
 
-    def check_dir(self, *args):
+    def check_dir(self, *_):
         dir = self.dir_var.get()
-        successful = False
-
-        if os.path.isdir(dir):
-            files = os.listdir(dir)
-            if any([f'm0{num}.luabnd.dcx.sdat' in files for num in FILE_NUMS]):
-                self.apply_patches_button.config(
-                    state='normal', text='Apply patches (backups will be generated)'
-                )
-                successful = True
-            else:
-                self.apply_patches_button.config(
-                    state='disabled', text='Apply patches (files to patch not found)'
-                )
-            if not self.selected_mod:
-                self.apply_patches_button.config(
-                    state='disabled', text='Apply patches (no mod selected)'
-                )
-            if any(
-                [f'm0{num}.luabnd.dcx.sdat.bak' in files for num in FILE_NUMS]
-            ):
-                self.remove_patches_button.config(
-                    state='normal', text='Remove patches (return game to retail state)'
-                )
-                successful = True
-            else:
-                self.remove_patches_button.config(
-                    state='disabled', text='Remove patches (backup files not found)'
-                )
-        else:
-            self.apply_patches_button.config(
-                state='disabled', text='Apply patches (invalid directory)'
-            )
-            self.remove_patches_button.config(
-                state='disabled', text='Remove patches(invalid directory)'
-            )
         self.dir_entry.xview('end')
 
-        if successful:
-            if dir != DATA['root-dir']:
-                DATA['root-dir'], _ = os.path.split(dir)
-                save_data()
+        successful = False
+
+        if not os.path.isdir(dir):
+            update_button(self.apply_patches_button, '(invalid directory)', 'disabled')
+            update_button(self.remove_patches_button, '(invalid directory)', 'disabled')
+            return False
+
+        if dir != DATA['root-dir']:
+            DATA['root-dir'], _ = os.path.split(dir)
+            save_data()
+
+        active_files, backups = [], []
+        for dir_name in self.mod['files']:
+            dir = os.path.join(DATA['root-dir'], dir_name)
+            file_names = self.mod['files'][dir_name]
+            for file_name in file_names:
+                file_path = os.path.join(dir, file_name)
+                active_files.append(os.path.isfile(file_path))
+                bak_path = file_path + '.bak'
+                backups.append(os.path.isfile(bak_path))
+
+        if any(active_files):
+            update_button(self.apply_patches_button, '(backups will be generated)')
+            successful = True
+        else:
+            update_button(self.apply_patches_button, '(files to patch not found)', 'disabled')
+
+        if not self.mod:
+            update_button(self.apply_patches_button, '(no mod selected)')
+
+        if any(backups):
+            update_button(self.remove_patches_button, '(return game to retail state)')
+            successful = True
+        else:
+            update_button(self.remove_patches_button, '(backup files not found)', 'disabled')
 
         return successful
 
@@ -466,7 +461,6 @@ class MainWindow(tk.Frame):
     def restart(self):
         self.quit()
         self.restart_flag = True
-
 
 
 if __name__ == '__main__':
