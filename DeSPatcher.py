@@ -77,20 +77,49 @@ def gen_patches():
         json.dump(data, f, indent=2)
 
 
-def create_patch(original, modified, mod_dir=None, patch_name=None):
-    with open(original, 'rb') as f:
-        unmodded_data = f.read().hex()
-    with open(modified, 'rb') as f:
-        modded_data = f.read().hex()
+def ask_open_file():
+    file = tk.filedialog.askopenfile()
+    if file:
+        file_name = file.name
+        file.close()
+        return file_name
+    else:
+        file.close()
+        return None
+
+
+def manual_patch(mode='hex'):
+    original_file_path = ask_open_file()
+    modded_file_path = ask_open_file()
+    if not all([original_file_path, modded_file_path]):
+        return None
+    else:
+        create_patch(original_file_path, modded_file_path, mode)
+
+
+def create_patch(original, modified, patch_mode='hex', mod_dir=None, patch_name=None):
+    if patch_mode == 'hex':
+        with open(original, 'rb') as f:
+            unmodded_data = f.read().hex()
+        with open(modified, 'rb') as f:
+            modded_data = f.read().hex()
+        patches = DMP.patch_make(unmodded_data, modded_data)
+        diff = DMP.patch_toText(patches)
+
+    if patch_mode == 'text':
+        with open(original, 'r', encoding='shiftjis') as f:
+            unmodded_data = f.read()
+        with open(modified, 'r', encoding='shiftjis') as f:
+            modded_data = f.read()
+
     path, name = os.path.split(modified)
     if mod_dir is None:
         mod_dir = path
-    patches = DMP.patch_make(unmodded_data, modded_data)
-    diff = DMP.patch_toText(patches)
     if patch_name is None:
         patch_name = os.path.split(name)[1].split('.')[0] + '.patch'
     if not os.path.isdir(mod_dir):
         os.mkdir(mod_dir)
+
     patch_path = os.path.join(mod_dir, patch_name)
     with open(patch_path, 'w+') as f:
         f.write(diff)
@@ -217,9 +246,13 @@ class Menubar(tk.Menu):
         self.file_menu.add_command(label='Quit', command=self.master.quit)
 
         self.mods_menu = tk.Menu(self, tearoff=0)
-        self.mods_menu.add_command(label='Refresh mods', command=self.populate_mods_menu)
         self.mods_menu.add_command(label='Generate patches', command=gen_patches)
+        self.mods_menu.add_command(label='Manual Hex Patch', command=manual_patch)
+        self.mods_menu.add_command(label='Manual Text Patch', command=lambda: manual_patch('text'))
 
+        self.mods_menu.add_separator()
+
+        self.mods_menu.add_command(label='Refresh mods', command=self.populate_mods_menu)
         # self.add_cascade(label='File', menu=self.file_menu)
         self.add_cascade(label='Mods', menu=self.mods_menu)
 
@@ -229,12 +262,12 @@ class Menubar(tk.Menu):
     def populate_mods_menu(self):
         self.master.mods = get_mods()
         self.master.set_mod(self.master.mods[0]['patch-name'])
-        self.mods_menu.delete(3, 'end')
+        self.mods_menu.delete(6, 'end')
         if not self.master.mods:
             self.mods_menu.add_command(label='No mods found', command=lambda: None, state='disabled')
         for mod in self.master.mods:
             label = mod['patch-name']
-            self.mods_menu.add_command(label=label, command=lambda label=label: self.master.set_mod(label))
+            self.mods_menu.add_command(label=label, command=lambda: self.master.set_mod(label))
 
 
 class MainWindow(tk.Frame):

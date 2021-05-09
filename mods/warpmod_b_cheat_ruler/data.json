@@ -1,0 +1,42 @@
+{
+  "name": "Unlocked Storm Ruler & Archstone Warping",
+  "description": "Allows usage of the Storm Ruler's special attacks anywhere in the game.\nAllows warping from any archstone to another.",
+  "files": {
+    "script": {
+      "m01.luabnd.dcx.sdat": [
+        "753b3e80024c71336f01e1cae7f28cc1f527668cb9b9d1186eac35e9fe59c78c",
+        "3b2c066c7c4530d08caa3ef6296bec3fce4e27f4ae139d73362e4533cebac720"
+      ],
+      "m02.luabnd.dcx.sdat": [
+        "cae0b75b6f317adceb84713a0b9ec665ac197c6967fea32c3ca5485e8f9c3ae7",
+        "5c9afc86aeb5980301705673f287e5a3b90b2ae90978931e01c9e7900bf8c596"
+      ],
+      "m03.luabnd.dcx.sdat": [
+        "9a262026c4c62c349bcb34e828866467740b65e71f74d5d181c7c62bd5363f0e",
+        "752d03968ba5e48a8a52a433af3ce44e64820601205372768f2b661ec6a5b421"
+      ],
+      "m04.luabnd.dcx.sdat": [
+        "8a8d37ae77c70ccdf58744869d941957f4ea996e738f171685caa221adee5abf",
+        "b28c4910716914e1e531fb1b6b7c1cc29a9df1a5e56f978583c2624ff61cbd0a"
+      ],
+      "m05.luabnd.dcx.sdat": [
+        "7878d9aead49e683a57247d133a63c6b5ec001547c9050cc8fbdcf6b24d049be",
+        "a6dd26bf1935f07eb070fd9b418a666599120cc747508a9be38150bcdee47a33"
+      ],
+      "m06.luabnd.dcx.sdat": [
+        "3238a4f554c48137e3e8953dd685ac7fc93fed6e86e79278b246c61cf66e32ca",
+        "386e3186b5c7141907914f5c33ed55a745ab540413b25c4313bbb51a7e673364"
+      ],
+      "m08.luabnd.dcx.sdat": [
+        "3266881bf0fbe5a990ce0e1adf13f8dd22714d087aa5fa59f2e0830549f022ac",
+        "8d1130c39b93bc23fb6e7170e68d924f1ceb10b9241d4cb5763270c45fd176f1"
+      ]
+    },
+    "sfx": {
+      "ds_sfxbnd_commoneffects.ffxbnd.dcx": [
+        "d609427309095dc1b6097a94accf9a28768a6b2caa1c98982d47dc5ead55371d",
+        "efd272443278fa4d07b96f8a4651682f9da09343648af77eb696838debe26ea9"
+      ]
+    }
+  }
+}

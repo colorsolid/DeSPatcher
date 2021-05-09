@@ -2,5 +2,5 @@ build/
 dist/
 env/
 DeSPatcher.spec
-data.json
+/data.json
 *.zip
