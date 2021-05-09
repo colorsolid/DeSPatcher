@@ -140,7 +140,7 @@ def create_patch(unmodified, modified, patch_mode, mod_dir=None, patch_name=None
     with open(patch_path, 'w+') as f:
         f.write(diff)
 
-    log_and_print(f'Patch file generated: {os.path.split(path)[1]}/{patch_name}')
+    log_and_print(f'Patch file generated: {patch_name}')
 
 
 def get_hash(filepath):
