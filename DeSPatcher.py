@@ -55,7 +55,9 @@ def get_mods():
     return mods
 
 
-def gen_patches():
+def generate_patches(log_var):
+    global log_text
+    log_text = ''
     data_file = tkinter.filedialog.askopenfile(filetypes=[('Mod data file', '*.json')])
     if not data_file:
         return None
@@ -65,16 +67,19 @@ def gen_patches():
     for dir_name in data['files']:
         files = data['files'][dir_name]
         for file_name in files:
-            modded_path = os.path.join(DATA['root-dir'], dir_name, file_name)
-            bak_path = modded_path + '.bak'
+            modified_path = os.path.join(DATA['root-dir'], dir_name, file_name)
+            bak_path = modified_path + '.bak'
             patch_name = f'{dir_name}---{file_name}.patch'
-            create_patch(bak_path, modded_path, patch_dir, patch_name)
-            o_hash = get_hash(bak_path)
-            n_hash = get_hash(modded_path)
-            data['files'][dir_name][file_name] = [o_hash, n_hash]
+            if create_patch(bak_path, modified_path, 'hex', patch_dir, patch_name) is None:
+                continue
+            unmodified_hash = get_hash(bak_path)
+            modified_hash = get_hash(modified_path)
+            data['files'][dir_name][file_name] = [unmodified_hash, modified_hash]
     data_file.close()
     with open(data_path, 'w+') as f:
         json.dump(data, f, indent=2)
+
+    log_var.set(log_text)
 
 
 def ask_open_file():
@@ -88,29 +93,40 @@ def ask_open_file():
         return None
 
 
-def manual_patch(mode='hex'):
-    original_file_path = ask_open_file()
-    modded_file_path = ask_open_file()
-    if not all([original_file_path, modded_file_path]):
+def generate_manual_patch(mode='hex'):
+    unmodified_file_path = ask_open_file()
+    modified_file_path = ask_open_file()
+    if not all([unmodified_file_path, modified_file_path]):
         return None
     else:
-        create_patch(original_file_path, modded_file_path, mode)
+        create_patch(unmodified_file_path, modified_file_path, mode)
+        
+        
+def load_file(path, patch_mode):
+    _, name = os.path.split(path)
+    try:
+        data = None
+        if patch_mode == 'hex':
+            with open(path, 'rb') as f:
+                data = f.read().hex()
+        if patch_mode == 'text':
+            with open(path, 'r', encoding='shiftjis') as f:
+                data = f.read()
+        return data
+    except FileNotFoundError:
+        log_and_print(f'Unmodified file not found: {name}')
+        return None
 
 
-def create_patch(original, modified, patch_mode='hex', mod_dir=None, patch_name=None):
-    if patch_mode == 'hex':
-        with open(original, 'rb') as f:
-            unmodded_data = f.read().hex()
-        with open(modified, 'rb') as f:
-            modded_data = f.read().hex()
-        patches = DMP.patch_make(unmodded_data, modded_data)
-        diff = DMP.patch_toText(patches)
+def create_patch(unmodified, modified, patch_mode, mod_dir=None, patch_name=None):
+    unmodified_data = load_file(unmodified, patch_mode)
+    modified_data = load_file(modified, patch_mode)
 
-    if patch_mode == 'text':
-        with open(original, 'r', encoding='shiftjis') as f:
-            unmodded_data = f.read()
-        with open(modified, 'r', encoding='shiftjis') as f:
-            modded_data = f.read()
+    if not all([unmodified_data, modified_data]):
+        return None
+
+    patches = DMP.patch_make(unmodified_data, modified_data)
+    diff = DMP.patch_toText(patches)
 
     path, name = os.path.split(modified)
     if mod_dir is None:
@@ -123,6 +139,8 @@ def create_patch(original, modified, patch_mode='hex', mod_dir=None, patch_name=
     patch_path = os.path.join(mod_dir, patch_name)
     with open(patch_path, 'w+') as f:
         f.write(diff)
+
+    log_and_print(f'Patch file generated: {os.path.split(path)[1]}/{patch_name}')
 
 
 def get_hash(filepath):
@@ -157,24 +175,24 @@ def check_patchable(file_path, hash_list, mod_hash, patch_path):
     return True
 
 
-def patch_file(original_path, patch_path, *_):
+def patch_file(unmodified_path, patch_path, *_):
     global log_text
-    _, original_name = os.path.split(original_path)
-    original_bak_path = original_path + '.bak'
-    original_bak_name = original_name + '.bak'
-    with open(original_path, 'rb') as f:
-        unmodded_data = f.read().hex()
-    if os.path.isfile(original_bak_path):
-        log_and_print(f'{original_bak_name} already exists, not overwriting')
+    _, unmodified_name = os.path.split(unmodified_path)
+    unmodified_bak_path = unmodified_path + '.bak'
+    unmodified_bak_name = unmodified_name + '.bak'
+    with open(unmodified_path, 'rb') as f:
+        unmodified_data = f.read().hex()
+    if os.path.isfile(unmodified_bak_path):
+        log_and_print(f'{unmodified_bak_name} already exists, not overwriting')
     else:
-        copyfile(original_path, original_bak_path)
+        copyfile(unmodified_path, unmodified_bak_path)
     with open(patch_path, 'r') as f:
         patch_data = f.read()
     patches = DMP.patch_fromText(patch_data)
-    modded_data, _ = DMP.patch_apply(patches, unmodded_data)
-    with open(original_path, 'wb') as f:
-        f.write(bytes.fromhex(modded_data))
-        log_and_print(f'Applying patch to {original_name}')
+    modified_data, _ = DMP.patch_apply(patches, unmodified_data)
+    with open(unmodified_path, 'wb') as f:
+        f.write(bytes.fromhex(modified_data))
+        log_and_print(f'Applying patch to {unmodified_name}')
 
 
 def save_data():
@@ -246,9 +264,9 @@ class Menubar(tk.Menu):
         self.file_menu.add_command(label='Quit', command=self.master.quit)
 
         self.mods_menu = tk.Menu(self, tearoff=0)
-        self.mods_menu.add_command(label='Generate patches', command=gen_patches)
-        self.mods_menu.add_command(label='Manual Hex Patch', command=manual_patch)
-        self.mods_menu.add_command(label='Manual Text Patch', command=lambda: manual_patch('text'))
+        self.mods_menu.add_command(label='Generate patches', command=lambda: generate_patches(self.master.log_var))
+        self.mods_menu.add_command(label='Manual hex patch', command=generate_manual_patch)
+        self.mods_menu.add_command(label='Manual text patch', command=lambda: generate_manual_patch('text'))
 
         self.mods_menu.add_separator()
 
@@ -262,7 +280,6 @@ class Menubar(tk.Menu):
     def populate_mods_menu(self):
         self.master.mods = get_mods()
         self.master.set_mod(self.master.mods[0]['patch-name'])
-        self.mods_menu.delete(6, 'end')
         if not self.master.mods:
             self.mods_menu.add_command(label='No mods found', command=lambda: None, state='disabled')
         for mod in self.master.mods:
@@ -407,10 +424,10 @@ class MainWindow(tk.Frame):
             patches = self.mod['files'][path_name]
             for file_name in patches:
                 file_path = os.path.join(file_dir, file_name)
-                default_hash, modded_hash = patches[file_name]
+                default_hash, modified_hash = patches[file_name]
                 patch_path = os.path.join(patch_dir, f'{path_name}---{file_name}.patch')
 
-                patchable = check_patchable(file_path, default_hash, modded_hash, patch_path)
+                patchable = check_patchable(file_path, default_hash, modified_hash, patch_path)
                 if patchable is False:
                     continue
 
